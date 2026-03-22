@@ -7,7 +7,7 @@ import { AuthService } from '../services/auth.service';
 import { ToastService } from '../services/toast.service';
 
 type Lot = { id: number; nombre: string };
-type Analysis = { id: number; lote_id: number; meta_rendimiento_t_ha: number | null; fertilizer_plan?: { id: number; pdf_download?: string | null } };
+type Analysis = { id: number; lote_id: number; meta_rendimiento_t_ha: number | null; fecha_muestreo?: string; fertilizer_plan?: { id: number; pdf_download?: string | null } };
 
 @Component({
   standalone: true,
@@ -94,8 +94,9 @@ type Analysis = { id: number; lote_id: number; meta_rendimiento_t_ha: number | n
           <div class="download-grid">
             <div class="download-item" *ngFor="let a of analyses(); let i = index" [class.ready]="a.fertilizer_plan?.pdf_download" [class.pending]="!a.fertilizer_plan?.pdf_download">
               <div class="download-info">
-                <div class="download-title">Análisis #{{ i + 1 }}</div>
+                <div class="download-title">Análisis #{{ analyses().length - i }}</div>
                 <div class="download-sub">Objetivo: {{ a.meta_rendimiento_t_ha ?? '?' }} t/ha</div>
+              <div class="download-sub">{{ a.fecha_muestreo ?? '' }}</div>
                 <div class="download-status" [class.ready]="a.fertilizer_plan?.pdf_download" [class.pending]="!a.fertilizer_plan?.pdf_download">
                   {{ a.fertilizer_plan?.pdf_download ? 'PDF listo' : 'Pendiente' }}
                 </div>
@@ -342,7 +343,7 @@ export class AnalysesPageComponent implements OnInit {
   showLegacyList = false;
   form: any = { lotId: '', sampled_at: '', yield_target_t_ha: '7', ph: '', mo_percent: '', cec_cmol: '', p_mgkg: '', k_cmol: '', ca_cmol: '', mg_cmol: '', s_mgkg: '', b_mgkg: '', fe_mgkg: '', mn_mgkg: '', zn_mgkg: '', cu_mgkg: '' };
 
-  constructor(private api: ApiService, public auth: AuthService, private toast: ToastService) {}
+  constructor(private api: ApiService, public auth: AuthService, private toast: ToastService) { }
 
   async ngOnInit() { await this.load(); }
 
@@ -390,7 +391,7 @@ export class AnalysesPageComponent implements OnInit {
           this.error.set('La fecha de muestreo no puede ser menor a la fecha de siembra del lote. Usa una fecha igual o posterior a la siembra.');
           return;
         }
-      } catch {}
+      } catch { }
     }
     const goal = Number(this.form.yield_target_t_ha);
     if (isNaN(goal) || goal < 4 || goal > 12) {
@@ -402,7 +403,7 @@ export class AnalysesPageComponent implements OnInit {
     this.error.set(null);
     try {
       const payload: any = { sampled_at: this.form.sampled_at || undefined, yield_target_t_ha: Number(this.form.yield_target_t_ha) };
-      for (const k of ['ph','mo_percent','cec_cmol','p_mgkg','k_cmol','ca_cmol','mg_cmol','s_mgkg','b_mgkg','fe_mgkg','mn_mgkg','zn_mgkg','cu_mgkg']) {
+      for (const k of ['ph', 'mo_percent', 'cec_cmol', 'p_mgkg', 'k_cmol', 'ca_cmol', 'mg_cmol', 's_mgkg', 'b_mgkg', 'fe_mgkg', 'mn_mgkg', 'zn_mgkg', 'cu_mgkg']) {
         if (this.form[k] !== '' && this.form[k] !== null && this.form[k] !== undefined) {
           payload[k] = Number(this.form[k]);
         }
@@ -435,10 +436,10 @@ export class AnalysesPageComponent implements OnInit {
   }
 
   // Filtra análisis con plan y enlace disponible
-  readyAnalyses(){
+  readyAnalyses() {
     return this.analyses().filter(a => !!a.fertilizer_plan?.pdf_download);
   }
-  scrollTo(id: string){
+  scrollTo(id: string) {
     const el = document.getElementById(id);
     if (el) {
       const acc = el.querySelector('details.ana-acc-card') as HTMLDetailsElement | null;
@@ -447,7 +448,7 @@ export class AnalysesPageComponent implements OnInit {
     }
   }
 
-  toggleAfterCreate(){
+  toggleAfterCreate() {
     try {
       const createAcc = document.getElementById('create-analysis-acc') as HTMLDetailsElement | null;
       if (createAcc) { createAcc.open = false; }
@@ -456,8 +457,9 @@ export class AnalysesPageComponent implements OnInit {
         downloadAcc.open = true;
         downloadAcc.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-    } catch {}
-  }}
+    } catch { }
+  }
+}
 
 
 
