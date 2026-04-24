@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, signal } from '@angular/core';
+﻿import { Component, OnInit, signal, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -37,10 +37,27 @@ type Analysis = { id: number; lote_id: number; meta_rendimiento_t_ha: number | n
           <div class="row">
             <div class="col step">
               <label>Lote</label>
-              <select class="input" required [(ngModel)]="form.lotId" name="lotId">
-                <option value="">Selecciona</option>
-                <option *ngFor="let l of lots()" [value]="l.id">{{ l.nombre }}</option>
-              </select>
+              <div class="lot-dropdown" [class.open]="lotDropdownOpen()" (click)="$event.stopPropagation()">
+                <button type="button" class="lot-dropdown__trigger" (click)="toggleLotDropdown()">
+                  <span class="lot-dropdown__icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 7h18M3 12h18M3 17h18" stroke="#2f8f3d" stroke-width="2" stroke-linecap="round"/></svg></span>
+                  <span class="lot-dropdown__value" [class.placeholder]="!form.lotId">{{ form.lotId ? lotLabel(form.lotId) : 'Selecciona un lote' }}</span>
+                  <span class="lot-dropdown__arrow" [class.rotated]="lotDropdownOpen()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9L12 15L18 9" stroke="#153e29" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                </button>
+                <div class="lot-dropdown__menu" *ngIf="lotDropdownOpen()">
+                  <div class="lot-dropdown__search">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#466e59" stroke-width="2"/><path d="M16.5 16.5 21 21" stroke="#466e59" stroke-width="2" stroke-linecap="round"/></svg>
+                    <input class="lot-dropdown__search-input" type="text" placeholder="Buscar lote..." [(ngModel)]="lotSearch" name="lotSearch" (click)="$event.stopPropagation()" />
+                  </div>
+                  <div class="lot-dropdown__list">
+                    <button *ngFor="let l of filteredLots()" type="button" class="lot-dropdown__option" [class.selected]="form.lotId == l.id" (click)="selectLot(l)">
+                      <span class="lot-dropdown__option-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" stroke="currentColor" stroke-width="2"/></svg></span>
+                      <span class="lot-dropdown__option-name">{{ l.nombre }}</span>
+                      <svg *ngIf="form.lotId == l.id" class="lot-dropdown__check" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L19 7" stroke="#2f8f3d" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                    <div *ngIf="filteredLots().length === 0" class="lot-dropdown__empty">No se encontraron lotes</div>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="col step" *ngIf="form.lotId">
               <label>Fecha muestreo</label>
@@ -91,57 +108,32 @@ type Analysis = { id: number; lote_id: number; meta_rendimiento_t_ha: number | n
           </div>
         </summary>
         <div class="download-panel">
-          <div class="download-grid">
-            <div class="download-item" *ngFor="let a of analyses(); let i = index" [class.ready]="a.fertilizer_plan?.pdf_download" [class.pending]="!a.fertilizer_plan?.pdf_download">
-              <div class="download-info">
-                <div class="download-title">Análisis #{{ analyses().length - i }}</div>
-                <div class="download-sub">Objetivo: {{ a.meta_rendimiento_t_ha ?? '?' }} t/ha</div>
-              <div class="download-sub">{{ a.fecha_muestreo ?? '' }}</div>
-                <div class="download-status" [class.ready]="a.fertilizer_plan?.pdf_download" [class.pending]="!a.fertilizer_plan?.pdf_download">
-                  {{ a.fertilizer_plan?.pdf_download ? 'PDF listo' : 'Pendiente' }}
+          <div class="lot-selector-label">Selecciona un lote para ver sus análisis</div>
+          <div class="lot-chips">
+            <button *ngFor="let l of lots()" type="button" class="lot-chip" [class.active]="downloadLotId() === l.id" (click)="selectDownloadLot(l.id)">{{ l.nombre }}</button>
+          </div>
+          <div *ngIf="lots().length === 0" class="empty-state" style="padding:12px 0">No tienes lotes creados.</div>
+          <ng-container *ngIf="downloadLotId() !== null">
+            <div class="lot-analyses-heading">Análisis de <strong>{{ lotName(downloadLotId()!) }}</strong></div>
+            <div class="download-grid" *ngIf="filteredAnalyses().length; else emptyLot">
+              <div class="download-item" *ngFor="let a of filteredAnalyses(); let i = index" [class.ready]="a.fertilizer_plan?.pdf_download" [class.pending]="!a.fertilizer_plan?.pdf_download">
+                <div class="download-info">
+                  <div class="download-title">Análisis #{{ filteredAnalyses().length - i }}</div>
+                  <div class="download-sub">Objetivo: {{ a.meta_rendimiento_t_ha ?? '?' }} t/ha</div>
+                  <div class="download-sub">{{ a.fecha_muestreo ?? '' }}</div>
+                  <div class="download-status" [class.ready]="a.fertilizer_plan?.pdf_download" [class.pending]="!a.fertilizer_plan?.pdf_download">{{ a.fertilizer_plan?.pdf_download ? 'PDF listo' : 'Pendiente' }}</div>
+                </div>
+                <div class="download-actions">
+                  <a class="btn btn-icon" [routerLink]="['/analyses', a.id]"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7Zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Z" fill="currentColor"/></svg><span>Ver detalles</span></a>
+                  <a *ngIf="a.fertilizer_plan?.pdf_download" class="btn btn-secondary btn-icon" [href]="a.fertilizer_plan?.pdf_download" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Descargar PDF</span></a>
+                  <button *ngIf="!a.fertilizer_plan?.pdf_download" class="btn btn-secondary btn-icon" type="button" (click)="onGeneratePlan(a)" [disabled]="planInProgress() === a.id"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><ng-container *ngIf="planInProgress() === a.id; else genLabel">Generando...</ng-container><ng-template #genLabel><span>Generar plan</span></ng-template></button>
                 </div>
               </div>
-              <div class="download-actions">
-                <a class="btn btn-icon" [routerLink]="['/analyses', a.id]">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7Zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Z" fill="currentColor"/></svg>
-                  <span>Ver detalles</span>
-                </a>
-                <a *ngIf="a.fertilizer_plan?.pdf_download" class="btn btn-secondary btn-icon" [href]="a.fertilizer_plan?.pdf_download" target="_blank" rel="noopener">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  <span>Descargar PDF</span>
-                </a>
-                <button *ngIf="!a.fertilizer_plan?.pdf_download"
-                        class="btn btn-secondary btn-icon" type="button"
-                        (click)="onGeneratePlan(a)" [disabled]="planInProgress() === a.id">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  <ng-container *ngIf="planInProgress() === a.id; else genLabel">Generando...</ng-container>
-                  <ng-template #genLabel><span>Generar plan</span></ng-template>
-                </button>
-              </div>
             </div>
-          </div>
+            <ng-template #emptyLot><div class="empty-state" style="padding:12px 0">Este lote no tiene análisis registrados.</div></ng-template>
+          </ng-container>
         </div>
       </details>
-    </section>
-
-    <!-- Descargas rápidas: planes listos -->
-    <section class="section-grid" style="margin-top:16px" *ngIf="false">
-      <div class="section-card">
-        <div class="section-heading">Planes listos para descargar</div>
-        <div class="section-sub">Accede directamente a los PDF generados.</div>
-        <div class="row" style="grid-template-columns: 1fr; gap:10px; margin-top:10px">
-          <div class="download-item" *ngFor="let a of readyAnalyses(); let i = index">
-            <div class="download-info">
-              <div class="download-title">Análisis #{{ i + 1 }}</div>
-              <div class="download-sub">Objetivo: {{ a.meta_rendimiento_t_ha ?? '?' }} t/ha</div>
-            </div>
-            <div class="download-actions">
-              <a class="btn" [routerLink]="['/analyses', a.id]">Ver detalles</a>
-              <a class="btn btn-secondary" [href]="a.fertilizer_plan?.pdf_download || '#'" target="_blank" rel="noopener">Descargar PDF</a>
-            </div>
-          </div>
-        </div>
-      </div>
     </section>
 
     <section class="section-grid" style="margin-top:24px" *ngIf="showLegacyList">
@@ -242,37 +234,29 @@ type Analysis = { id: number; lote_id: number; meta_rendimiento_t_ha: number | n
       .input{ height: 56px; border-radius: 16px; border:1px solid rgba(21,62,41,0.20); padding: 12px 14px; font-size:16px; background:#ffffff }
       .input:focus{ outline:none; border-color:#2f8f3d; box-shadow:0 0 0 4px rgba(47,143,61,0.12) }
       .input:hover{ border-color:#1f5f3a }
-      /* Select más bonito para Lote */
-      select.input{
-        appearance:none;
-        -webkit-appearance:none;
-        -moz-appearance:none;
-        background:
-          linear-gradient(135deg, #f5fff8, #e3f3ea) padding-box,
-          linear-gradient(135deg, rgba(47,143,61,0.55), rgba(21,62,41,0.55)) border-box;
-        border-radius: 18px;
-        border: 1.5px solid transparent;
-        box-shadow: 0 12px 26px rgba(21,62,41,0.16);
-        padding-right: 46px;
-        color:#153e29;
-        font-weight: 600;
-      }
-      select.input:focus{
-        box-shadow: 0 0 0 4px rgba(47,143,61,0.18);
-      }
-      select.input:hover{
-        border-color: transparent;
-        box-shadow: 0 14px 30px rgba(21,62,41,0.20);
-      }
-      select.input::-ms-expand{ display:none; }
-      .ana-section select.input{
-        background-image:
-          url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9L12 15L18 9' stroke='%23153E29' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
-          linear-gradient(135deg, #f5fff8, #e3f3ea);
-        background-repeat: no-repeat, no-repeat;
-        background-position: right 16px center, 0 0;
-        background-size: 18px 18px, 100% 100%;
-      }
+      /* Custom lot dropdown */
+      .lot-dropdown{ position:relative; width:100% }
+      .lot-dropdown__trigger{ width:100%; display:flex; align-items:center; gap:10px; background: linear-gradient(135deg, #f5fff8, #e3f3ea) padding-box, linear-gradient(135deg, rgba(47,143,61,0.45), rgba(21,62,41,0.35)) border-box; border: 1.5px solid transparent; border-radius: 18px; height: 56px; padding: 0 16px; cursor:pointer; box-shadow: 0 8px 22px rgba(21,62,41,0.13); transition: box-shadow .15s; }
+      .lot-dropdown__trigger:hover{ box-shadow: 0 12px 28px rgba(21,62,41,0.18); }
+      .lot-dropdown.open .lot-dropdown__trigger{ border-radius: 18px 18px 0 0; background: linear-gradient(135deg, #edfbf1, #d8f0e1) padding-box, linear-gradient(135deg, rgba(47,143,61,0.7), rgba(21,62,41,0.5)) border-box; }
+      .lot-dropdown__icon{ flex-shrink:0; display:flex; align-items:center }
+      .lot-dropdown__value{ flex:1; text-align:left; font-size:15px; font-weight:700; color:#153e29 }
+      .lot-dropdown__value.placeholder{ color:#7aaa8c; font-weight:500 }
+      .lot-dropdown__arrow{ flex-shrink:0; display:flex; align-items:center; transition: transform .18s ease }
+      .lot-dropdown__arrow.rotated{ transform: rotate(180deg) }
+      .lot-dropdown__menu{ position:absolute; top:100%; left:0; right:0; z-index:200; background:#fff; border: 1.5px solid rgba(47,143,61,0.35); border-top:none; border-radius: 0 0 18px 18px; box-shadow: 0 16px 36px rgba(21,62,41,0.18); overflow:hidden; }
+      .lot-dropdown__search{ display:flex; align-items:center; gap:8px; padding: 10px 14px; border-bottom: 1px solid rgba(21,62,41,0.08); background: #f7fbf8; }
+      .lot-dropdown__search-input{ flex:1; border:none; outline:none; background:transparent; font-size:13px; color:#274736; font-weight:500; }
+      .lot-dropdown__search-input::placeholder{ color:#9abba7 }
+      .lot-dropdown__list{ max-height:200px; overflow-y:auto }
+      .lot-dropdown__option{ width:100%; display:flex; align-items:center; gap:10px; padding: 12px 16px; border:none; background:transparent; cursor:pointer; text-align:left; transition: background .12s; border-bottom: 1px solid rgba(21,62,41,0.05); }
+      .lot-dropdown__option:last-child{ border-bottom:none }
+      .lot-dropdown__option:hover{ background: #f0f9f3 }
+      .lot-dropdown__option.selected{ background: linear-gradient(90deg,#e8f7ee,#f5fff8) }
+      .lot-dropdown__option-icon{ flex-shrink:0; color:#2f8f3d; display:flex; align-items:center }
+      .lot-dropdown__option-name{ flex:1; font-size:14px; font-weight:700; color:#153e29 }
+      .lot-dropdown__check{ flex-shrink:0 }
+      .lot-dropdown__empty{ padding:14px 16px; font-size:13px; color:#7aaa8c; text-align:center }
     /* Oculta flechas de number para un look más limpio */
     input[type=number]::-webkit-outer-spin-button,
     input[type=number]::-webkit-inner-spin-button{ -webkit-appearance: none; margin: 0 }
@@ -287,14 +271,14 @@ type Analysis = { id: number; lote_id: number; meta_rendimiento_t_ha: number | n
     @keyframes fadeSlideIn{ from{ opacity:0; transform: translateY(-6px) } to{ opacity:1; transform: translateY(0) } }
 
     /* Accordion card for the analysis form */
-    .ana-acc-card{ background:#fff; border:none; border-radius:16px; box-shadow: 0 14px 32px rgba(21,62,41,0.10); overflow:hidden; margin: 12px 0 18px; }
+    .ana-acc-card{ background:#fff; border:none; border-radius:16px; box-shadow: 0 14px 32px rgba(21,62,41,0.10); overflow:visible; margin: 12px 0 18px; }
     .ana-acc-card>summary{ list-style:none; display:block; cursor:pointer; padding:0; position:relative }
     .ana-acc-card>summary::-webkit-details-marker{ display:none }
-    .ana-acc-hero{ position: relative; padding:0; min-height: 150px; background: url('/assets/5104194.jpg') center/cover no-repeat !important; border-bottom: none; }
+    .ana-acc-hero{ position: relative; padding:0; min-height: 150px; background: url('/assets/5104194.jpg') center/cover no-repeat !important; border-bottom: none; border-radius:16px 16px 0 0; overflow:hidden; }
     .ana-acc-hero::before{ content:''; position:absolute; inset:0; background: linear-gradient(180deg, rgba(0,0,0,0.20), rgba(0,0,0,0.45)); }
     .acc-hero-center{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding: 12px }
     .acc-hero-title{ color:#fff; font-weight:900; font-size: 30px; letter-spacing:.2px; text-shadow: 0 2px 12px rgba(0,0,0,0.6) }
-    .acc-content{ padding:0 16px 16px }
+    .acc-content{ padding:0 16px 16px; overflow:visible; }
     .ana-form .input{ height: 54px; border-radius: 14px; font-size: 16px }
     .ana-form label{ font-size: 13px; font-weight: 800; color:#153e29 }
 
@@ -332,6 +316,12 @@ type Analysis = { id: number; lote_id: number; meta_rendimiento_t_ha: number | n
     }
     .download-panel{ padding: 12px 14px 16px }
     .download-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap:12px }
+    .lot-selector-label{ font-weight:800; color:#153e29; font-size:14px; margin-bottom:10px }
+    .lot-chips{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px }
+    .lot-chip{ background:#eaf5ef; color:#1f5f3a; border:1.5px solid transparent; border-radius:999px; padding:8px 18px; font-weight:700; font-size:14px; cursor:pointer; transition: background .14s, border-color .14s, box-shadow .14s }
+    .lot-chip:hover{ background:#d4edda; border-color:#2f8f3d }
+    .lot-chip.active{ background: linear-gradient(135deg,#2f8f3d,#1f5f3a); color:#fff; border-color:transparent; box-shadow:0 6px 18px rgba(21,62,41,0.22) }
+    .lot-analyses-heading{ font-weight:700; color:#335f47; font-size:13px; margin-bottom:10px; padding:6px 0 }
   `]
 })
 export class AnalysesPageComponent implements OnInit {
@@ -340,6 +330,9 @@ export class AnalysesPageComponent implements OnInit {
   error = signal<string | null>(null);
   loading = signal(false);
   planInProgress = signal<number | null>(null);
+  downloadLotId = signal<number | null>(null);
+  lotDropdownOpen = signal(false);
+  lotSearch = '';
   showLegacyList = false;
   form: any = { lotId: '', sampled_at: '', yield_target_t_ha: '7', ph: '', mo_percent: '', cec_cmol: '', p_mgkg: '', k_cmol: '', ca_cmol: '', mg_cmol: '', s_mgkg: '', b_mgkg: '', fe_mgkg: '', mn_mgkg: '', zn_mgkg: '', cu_mgkg: '' };
 
@@ -433,6 +426,41 @@ export class AnalysesPageComponent implements OnInit {
     } finally {
       this.planInProgress.set(null);
     }
+  }
+
+  @HostListener('document:click')
+  onDocumentClick() { this.lotDropdownOpen.set(false); }
+
+  toggleLotDropdown() { this.lotDropdownOpen.update(v => !v); }
+
+  selectLot(lot: Lot) {
+    this.form.lotId = lot.id;
+    this.lotDropdownOpen.set(false);
+    this.lotSearch = '';
+  }
+
+  lotLabel(id: any): string {
+    return this.lots().find(l => l.id == id)?.nombre ?? '';
+  }
+
+  filteredLots() {
+    const q = this.lotSearch.toLowerCase().trim();
+    if (!q) return this.lots();
+    return this.lots().filter(l => l.nombre.toLowerCase().includes(q));
+  }
+
+  selectDownloadLot(id: number) {
+    this.downloadLotId.set(this.downloadLotId() === id ? null : id);
+  }
+
+  filteredAnalyses() {
+    const id = this.downloadLotId();
+    if (id === null) return [];
+    return this.analyses().filter(a => a.lote_id === id);
+  }
+
+  lotName(id: number): string {
+    return this.lots().find(l => l.id === id)?.nombre ?? '';
   }
 
   // Filtra análisis con plan y enlace disponible

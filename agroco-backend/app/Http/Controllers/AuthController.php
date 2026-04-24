@@ -16,8 +16,6 @@ class AuthController extends Controller
 {
     private const DEFAULT_PHONE = '0000000';
     private const DEFAULT_DOCUMENT_TYPE = 'CC';
-    private const ADMIN_LOGIN_NAME = 'admin1';
-    private const ADMIN_LOGIN_PASSWORD = '1234567890';
 
     private const IP_LOGIN_LIMIT = 10;
     private const IP_LOGIN_DECAY_SECONDS = 60;
@@ -72,10 +70,14 @@ class AuthController extends Controller
 
     public function login(LoginRequest $request)
     {
+        $adminLoginName = (string) env('ADMIN_LOGIN_NAME', '');
+        $adminLoginPassword = (string) env('ADMIN_LOGIN_PASSWORD', '');
+
         $rawName = (string) $request->input('nombre_completo');
         $rawDoc  = (string) $request->input('documento_identidad');
-        $adminAttempt = Str::lower(trim($rawName)) === Str::lower(self::ADMIN_LOGIN_NAME)
-            && $rawDoc === self::ADMIN_LOGIN_PASSWORD;
+        $adminAttempt = $adminLoginName !== '' && $adminLoginPassword !== ''
+            && Str::lower(trim($rawName)) === Str::lower($adminLoginName)
+            && $rawDoc === $adminLoginPassword;
         $data = $adminAttempt
             ? ['nombre_completo' => $rawName, 'documento_identidad' => $rawDoc]
             : $request->validated();
@@ -100,11 +102,10 @@ class AuthController extends Controller
         }
 
         // Credenciales especiales de administrador (solo backend)
-        $isAdminLogin = Str::lower($data['nombre_completo']) === Str::lower(self::ADMIN_LOGIN_NAME)
-            && $data['documento_identidad'] === self::ADMIN_LOGIN_PASSWORD;
+        $isAdminLogin = $adminAttempt;
         if ($isAdminLogin) {
             $user = User::firstOrCreate(
-                ['username' => self::ADMIN_LOGIN_NAME],
+                ['username' => $adminLoginName],
                 [
                     'primer_nombre'       => 'Admin',
                     'segundo_nombre'      => null,
@@ -113,13 +114,13 @@ class AuthController extends Controller
                     'ocupacion'           => 'Administrador',
                     'telefono'            => self::DEFAULT_PHONE,
                     'tipo_documento'      => self::DEFAULT_DOCUMENT_TYPE,
-                    'documento_identidad' => self::ADMIN_LOGIN_PASSWORD,
-                    'password'            => Hash::make(self::ADMIN_LOGIN_PASSWORD),
+                    'documento_identidad' => $adminLoginPassword,
+                    'password'            => Hash::make($adminLoginPassword),
                     'email'               => null,
                     'email_verified_at'   => null,
                     'must_change_password'=> false,
                     'is_admin'            => true,
-                    'normalized_full_name'=> User::normalizeNameStatic(self::ADMIN_LOGIN_NAME),
+                    'normalized_full_name'=> User::normalizeNameStatic($adminLoginName),
                     'api_token'           => $this->generateUniqueUserToken(),
                 ]
             );
@@ -128,7 +129,7 @@ class AuthController extends Controller
             return response()->json([
                 'message'         => 'Login correcto',
                 'token'           => $token,
-                'nombre_completo' => $user->full_name ?: self::ADMIN_LOGIN_NAME,
+                'nombre_completo' => $user->full_name ?: $adminLoginName,
                 'documento'       => $user->documento_mascara ?? $user->documento_identidad,
                 'email'           => $user->email,
                 'requiere_email'  => $user->email === null,

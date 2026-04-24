@@ -153,6 +153,19 @@ import { AuthService } from '../services/auth.service';
       font-size: 15px;
       font-weight: 800;
     }
+    .profile-msg{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 700;
+      animation: msgFadeIn .25s ease;
+    }
+    .profile-msg--success{ background:#ecfdf5; color:#047857; border:1.5px solid #a7f3d0; }
+    .profile-msg--error{ background:#fef2f2; color:#b91c1c; border:1.5px solid #fecaca; }
+    @keyframes msgFadeIn{ from{ opacity:0; transform:translateY(6px) } to{ opacity:1; transform:translateY(0) } }
   `],
   template: `
     <ng-container *ngIf="auth.user(); else guest">
@@ -160,12 +173,10 @@ import { AuthService } from '../services/auth.service';
         <div class="hero-copy">
           <span class="tagline">Perfil</span>
           <h1 class="hero-title">Tu información personal y acceso seguro.</h1>
-          <p class="hero-subtitle">Actualiza tu contraseña para mantener protegida tu cuenta.</p>
           <div class="section-card profile-summary" style="width:100%; position:relative; margin:0;">
             <div class="profile-summary-main">
               <div>
                 <div class="section-heading">{{ auth.user()!.nombre_completo }}</div>
-                <div class="section-sub">{{ auth.user()!.email || 'Sin correo registrado' }}</div>
               </div>
             </div>
             <div class="profile-details">
@@ -188,7 +199,7 @@ import { AuthService } from '../services/auth.service';
                     <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 8h16" stroke="currentColor" stroke-width="1.6"/></svg>
                   </span>
                   <span class="label">Ocupación</span>
-                  <span class="value">{{ auth.user()?.ocupacion || 'Sin dato' }}</span>
+                  <span class="value">Agricultor</span>
                 </div>
                 <div class="detail">
                   <span class="ico" aria-hidden="true">
@@ -205,7 +216,6 @@ import { AuthService } from '../services/auth.service';
         <div class="floating-layers">
           <form class="form-shell" (ngSubmit)="onSave()">
             <div class="form-title">Editar perfil</div>
-            <div class="form-sub">Actualiza tu foto y correo electrénico.</div>
 
             <div class="row" style="align-items:center; gap:12px; display:none">
               <div class="avatar-circle avatar-lg">
@@ -229,7 +239,7 @@ import { AuthService } from '../services/auth.service';
             <div class="row" style="gap:12px">
               <div class="col" style="min-width:220px">
                 <label>Ocupación</label>
-                <input class="input" type="text" [(ngModel)]="ocupacion" name="ocupacion" placeholder="Ej.: Agricultor" />
+                <input class="input" type="text" value="Agricultor" disabled style="opacity:0.6; cursor:not-allowed; background:#f0f7f2" />
               </div>
               <div class="col" style="min-width:180px">
                 <label>Teléfono</label>
@@ -244,8 +254,14 @@ import { AuthService } from '../services/auth.service';
             <div class="row" style="justify-content:flex-start">
               <button class="btn" [disabled]="busy">Guardar cambios</button>
             </div>
-            <div *ngIf="msg" style="color:var(--mint-700)">{{ msg }}</div>
-            <div *ngIf="error" style="color:#d16969">{{ error }}</div>
+            <div *ngIf="msg" class="profile-msg profile-msg--success">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#d1fae5"/><path d="M7 12l4 4 6-7" stroke="#047857" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>{{ msg }}</span>
+            </div>
+            <div *ngIf="error" class="profile-msg profile-msg--error">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#fee2e2"/><path d="M12 8v4m0 4h.01" stroke="#b91c1c" stroke-width="2.2" stroke-linecap="round"/></svg>
+              <span>{{ error }}</span>
+            </div>
           </form>
         </div>
       </section>
@@ -271,10 +287,9 @@ export class ProfilePageComponent {
   constructor(public auth: AuthService) {}
 
   ngOnInit() {
-    const u = this.auth.user();
-    this.ocupacion = (u as any)?.ocupacion ?? null;
-    this.telefono = (u as any)?.telefono ?? null;
-    this.email = u?.email ?? null;
+    this.ocupacion = null;
+    this.telefono = null;
+    this.email = null;
   }
 
   async onPhotoChange(e: Event) {
@@ -312,22 +327,8 @@ export class ProfilePageComponent {
     if (!this.auth.token()) return;
     this.busy = true; this.msg = null; this.error = null;
     try {
-      const ocupRaw = (this.ocupacion ?? '').trim();
       const telRaw = (this.telefono ?? '').trim();
       const emailRaw = (this.email ?? '').trim();
-
-      if (ocupRaw) {
-        if (ocupRaw.length < 3) {
-          this.error = 'La ocupación debe tener al menos 3 caracteres.';
-          this.busy = false;
-          return;
-        }
-        if (/\d/.test(ocupRaw)) {
-          this.error = 'La ocupación no debe contener números. Escribe solo letras, por ejemplo: Agricultor.';
-          this.busy = false;
-          return;
-        }
-      }
 
       let telefonoNormalizado: string | null = null;
       if (telRaw) {
@@ -350,7 +351,6 @@ export class ProfilePageComponent {
       }
 
       await this.auth.updateProfile({
-        ocupacion: ocupRaw || undefined,
         telefono: telefonoNormalizado ?? undefined,
         email: emailRaw || undefined,
       });
@@ -359,9 +359,13 @@ export class ProfilePageComponent {
         this.photoFile = null;
         this.photoPreview = null;
       }
-      this.msg = 'Perfil actualizado';
+      this.telefono = null;
+      this.email = null;
+      this.msg = 'Perfil actualizado correctamente';
+      setTimeout(() => { this.msg = null; }, 4000);
     } catch (e: any) {
       this.error = e?.error?.message || e?.message || 'No se pudo actualizar el perfil';
+      setTimeout(() => { this.error = null; }, 5000);
     } finally {
       this.busy = false;
     }

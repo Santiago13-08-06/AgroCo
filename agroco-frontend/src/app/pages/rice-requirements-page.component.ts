@@ -217,7 +217,7 @@ type Req = { targets: { rice: RiceTargets } };
         </p>
       </div>
       <div class="hero-illustration">
-        <img src="assets/organic-hero.svg" alt="Guía nutricional" />
+        <img src="assets/GranoDeArrozSaludando.png" alt="Guía nutricional" />
       </div>
     </section>
 

@@ -201,7 +201,7 @@ export class LoginPageComponent {
       } else if (apiMsg) {
         this.error = apiMsg;
       } else if (e?.status === 0) {
-        this.error = 'No se pudo conectar con el servidor. Verifica que el backend esta en http://localhost:8000.';
+        this.error = 'No se pudo conectar con el servidor. Intenta nuevamente más tarde.';
       } else {
         this.error = 'Error al iniciar sesion';
       }

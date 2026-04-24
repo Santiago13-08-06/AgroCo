@@ -7,10 +7,6 @@ import { environment } from '../../environments/environment';
 export class ApiService {
   base = environment.apiUrl;
   constructor(private http: HttpClient) {
-    const stored = localStorage.getItem('agroco_api');
-    if (stored) {
-      this.base = stored as string;
-    }
     try {
       const cap = (window as any).Capacitor;
       const platform = cap?.getPlatform?.() || cap?.platform;
