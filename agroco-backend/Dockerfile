@@ -1,8 +1,9 @@
 ﻿FROM php:8.2-cli
 
 RUN apt-get update && apt-get install -y \
-    git curl libpq-dev zip unzip libzip-dev \
-    && docker-php-ext-install pdo pdo_pgsql zip bcmath sodium
+    git curl libpq-dev zip unzip libzip-dev libsodium-dev \
+    && docker-php-ext-install pdo pdo_pgsql zip bcmath \
+    && docker-php-ext-enable sodium
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
