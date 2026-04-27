@@ -122,7 +122,7 @@ class FertilizerPlanController extends Controller
                     $soilAnalysis->lot,
                     $soilAnalysis,
                     $resource,
-                    storage_path("app/public/{$relativePath}")
+                    $signedUrl
                 )
             );
             $mailSent = true;

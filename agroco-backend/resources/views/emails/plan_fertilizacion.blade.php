@@ -5,14 +5,14 @@
     <p>Hola {{ optional($lot->user)->full_name ?? 'Productor' }},</p>
 
     <p>
-        Adjuntamos el <strong>Plan de fertilizacion</strong> para tu lote
-        <strong>{{ $lot->name ?? 'Lote #'.$lot->id }}</strong>.
+        Tu <strong>Plan de fertilización</strong> para el lote
+        <strong>{{ $lot->name ?? 'Lote #'.$lot->id }}</strong> ha sido generado exitosamente.
     </p>
 
     <p>
         <strong>Resumen:</strong><br>
-        &bull; Area: {{ $data['resumen']['area_ha'] ?? $lot->area_ha }} ha<br>
-        &bull; Rendimiento objetivo: {{ $data['resumen']['meta_rendimiento_t_ha'] ?? $soil->yield_target_t_ha }} t/ha
+        &bull; Área: {{ $data['resumen']['area_ha'] ?? $lot->area_ha }} ha<br>
+        &bull; Rendimiento objetivo: {{ $data['resumen']['meta_rendimiento_t_ha'] ?? $soil->meta_rendimiento_t_ha }} t/ha
     </p>
 
     @if(isset($data['resumen_totales_lote']))
@@ -25,13 +25,24 @@
     @endif
 
     <p>
-        En el PDF adjunto encontraras el detalle de:<br>
+        Puedes descargar tu plan completo en PDF haciendo clic en el siguiente enlace:<br><br>
+        <a href="{{ $downloadUrl }}" style="background:#2e7d32;color:#fff;padding:10px 20px;text-decoration:none;border-radius:5px;">
+            Descargar Plan de Fertilización (PDF)
+        </a>
+    </p>
+
+    <p style="font-size:12px;color:#666;">
+        Este enlace es válido por 24 horas.
+    </p>
+
+    <p>
+        El plan incluye el detalle de:<br>
         &bull; Objetivos nutricionales (kg/ha y totales)<br>
-        &bull; Dosis de cada fertilizante por hectarea y por lote<br>
+        &bull; Dosis de cada fertilizante por hectárea y por lote<br>
         &bull; Fraccionamiento por fases (siembra, macollamiento, embuche)
     </p>
 
-    <p>Exitos en tu cultivo de arroz.</p>
+    <p>Éxitos en tu cultivo de arroz.</p>
 
     <p style="margin-top:20px;">Equipo AgroCo</p>
 </body>
