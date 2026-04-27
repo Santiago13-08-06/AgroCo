@@ -4,7 +4,8 @@ RUN apt-get update && apt-get install -y \
     git curl libpq-dev zip unzip libzip-dev libsodium-dev \
     && docker-php-ext-install pdo pdo_pgsql zip bcmath \
     && docker-php-ext-enable sodium \
-    && a2enmod rewrite headers
+    && a2dismod mpm_event mpm_worker \
+    && a2enmod mpm_prefork rewrite headers
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
