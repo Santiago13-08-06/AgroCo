@@ -27,6 +27,7 @@ return [
         'http://127.0.0.1',
         'http://10.0.2.2',
         'http://192.168.1.18:4200',
+        'https://agro-co.vercel.app',
     ],
 
     // Aceptar cualquier puerto en localhost/10.0.2.2
@@ -41,4 +42,3 @@ return [
     'supports_credentials' => true,
 
 ];
-
