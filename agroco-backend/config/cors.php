@@ -19,18 +19,9 @@ return [
 
     'allowed_methods' => ['*'],
 
-    // Permitir frontend local (Angular dev), mÃ³vil y Capacitor Android
-    'allowed_origins' => [
-        'capacitor://localhost',
-        'http://localhost',
-        'http://localhost:4200',
-        'http://127.0.0.1',
-        'http://10.0.2.2',
-        'http://192.168.1.18:4200',
-        'https://agro-co.vercel.app',
-    ],
+    // Permitir todos los origenes temporalmente para diagnostico
+    'allowed_origins' => ['*'],
 
-    // Aceptar cualquier puerto en localhost/10.0.2.2
     'allowed_origins_patterns' => [],
 
     'allowed_headers' => ['*'],
@@ -39,6 +30,6 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => true,
+    'supports_credentials' => false,
 
 ];
