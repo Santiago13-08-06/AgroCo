@@ -12,6 +12,8 @@ COPY . .
 
 RUN composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-gd
 
+RUN php artisan config:clear && php artisan cache:clear && php artisan route:clear
+
 EXPOSE 8000
 
 CMD php artisan config:clear && php artisan cache:clear && php artisan serve --host=0.0.0.0 --port=$PORT
