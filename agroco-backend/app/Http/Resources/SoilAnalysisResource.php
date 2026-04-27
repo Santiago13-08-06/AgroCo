@@ -47,10 +47,6 @@ class SoilAnalysisResource extends JsonResource
                         return null;
                     }
 
-                    $disk = Storage::disk('public');
-                    $file = collect($disk->files('plans'))
-                        ->first(fn($path) => str_starts_with(basename($path), "plan_fertilizacion_{$plan->id}_"));
-
                     $token = $plan->download_token;
                     if (!$token) {
                         $token = Str::random(40);
@@ -65,8 +61,8 @@ class SoilAnalysisResource extends JsonResource
 
                     return [
                         'id'           => $plan->id,
-                        'pdf_file'     => $file ? basename($file) : null,
-                        'pdf_exists'   => $file ? $disk->exists($file) : false,
+                        'pdf_file'     => null,
+                        'pdf_exists'   => true,
                         'pdf_download' => $downloadUrl,
                         'data'         => new \App\Http\Resources\FertilizerPlanResource($plan),
                     ];
