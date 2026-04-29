@@ -437,11 +437,15 @@ export class AnalysesPageComponent implements OnInit {
     if (!this.auth.token()) return;
     this.planInProgress.set(a.id);
     try {
-      await this.api.post(`/api/v1/soil-analyses/${a.id}/plan/generate`, {}, true);
+      const res = await this.api.post<{ mail_sent: boolean }>(`/api/v1/soil-analyses/${a.id}/plan/generate`, {}, true);
       await this.load();
-      this.toast.show('Plan generado. El PDF fue enviado a tu correo.', 'success');
+      if (res?.mail_sent) {
+        this.toast.show('Plan generado. El PDF fue enviado a tu correo.', 'success');
+      } else {
+        this.toast.show('Plan guardado, pero el correo no pudo enviarse. Verifica la configuración de correo.', 'error');
+      }
     } catch (e: any) {
-      const message = e?.message || 'No se pudo generar el plan';
+      const message = e?.error?.message || e?.message || 'No se pudo generar el plan';
       this.toast.show(message, 'error');
     } finally {
       this.planInProgress.set(null);
@@ -489,14 +493,17 @@ export class AnalysesPageComponent implements OnInit {
 
   sentLabel(a: Analysis): string {
     const n = a.fertilizer_plan?.email_sent_count ?? 0;
+    if (!a.fertilizer_plan) return 'Pendiente';
     if (n === 0) return 'PDF generado';
     if (n === 1) return 'Enviado 1 vez';
     return `Enviado ${n} veces`;
   }
 
+  // El botón cambia en cuanto existe el plan (primer clic), no espera confirmación del correo
   sendButtonLabel(a: Analysis): string {
-    const n = a.fertilizer_plan?.email_sent_count ?? 0;
-    if (!a.fertilizer_plan || n === 0) return 'Enviar PDF a correo';
+    if (!a.fertilizer_plan) return 'Enviar PDF a correo';
+    const n = a.fertilizer_plan.email_sent_count ?? 0;
+    if (n === 0) return 'Reenviar PDF a correo';
     if (n === 1) return 'Reenviar (1 vez enviado)';
     return `Reenviar (${n} veces enviado)`;
   }

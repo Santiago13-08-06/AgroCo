@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(git -C \"C:/Users/SANTIAGO/Desktop/proyectos-programacion/AgroCo\" show 87b7535:agroco-backend/app/Http/Controllers/FertilizerPlanController.php)"
+    ]
+  }
+}

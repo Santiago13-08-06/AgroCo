@@ -11,8 +11,8 @@
 
     <p>
         <strong>Resumen:</strong><br>
-        &bull; Área: {{ $data['resumen']['area_ha'] ?? $lot->area_ha }} ha<br>
-        &bull; Rendimiento objetivo: {{ $data['resumen']['meta_rendimiento_t_ha'] ?? $soil->meta_rendimiento_t_ha }} t/ha
+        &bull; Área: {{ $lot->area_ha ?? '—' }} ha<br>
+        &bull; Rendimiento objetivo: {{ $soil->yield_target_t_ha ?? '—' }} t/ha
     </p>
 
     @if(isset($data['resumen_totales_lote']))
