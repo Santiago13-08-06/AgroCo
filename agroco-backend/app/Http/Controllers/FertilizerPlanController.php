@@ -116,6 +116,7 @@ class FertilizerPlanController extends Controller
                         $pdfFilename,
                     )
                 );
+                $plan->increment('email_sent_count');
                 $mailSent = true;
             } catch (\Throwable $e) {
                 $mailError = $e->getMessage();

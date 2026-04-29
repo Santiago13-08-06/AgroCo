@@ -7,7 +7,7 @@ import { AuthService } from '../services/auth.service';
 import { ToastService } from '../services/toast.service';
 
 type Lot = { id: number; nombre: string };
-type Analysis = { id: number; lote_id: number; meta_rendimiento_t_ha: number | null; fecha_muestreo?: string; fertilizer_plan?: { id: number; pdf_download?: string | null } };
+type Analysis = { id: number; lote_id: number; meta_rendimiento_t_ha: number | null; fecha_muestreo?: string; fertilizer_plan?: { id: number; email_sent_count: number } | null };
 
 @Component({
   standalone: true,
@@ -116,17 +116,28 @@ type Analysis = { id: number; lote_id: number; meta_rendimiento_t_ha: number | n
           <ng-container *ngIf="downloadLotId() !== null">
             <div class="lot-analyses-heading">Análisis de <strong>{{ lotName(downloadLotId()!) }}</strong></div>
             <div class="download-grid" *ngIf="filteredAnalyses().length; else emptyLot">
-              <div class="download-item" *ngFor="let a of filteredAnalyses(); let i = index" [class.ready]="a.fertilizer_plan?.pdf_download" [class.pending]="!a.fertilizer_plan?.pdf_download">
+              <div class="download-item" *ngFor="let a of filteredAnalyses(); let i = index" [class.ready]="hasPlan(a)" [class.pending]="!hasPlan(a)">
                 <div class="download-info">
                   <div class="download-title">Análisis #{{ filteredAnalyses().length - i }}</div>
                   <div class="download-sub">Objetivo: {{ a.meta_rendimiento_t_ha ?? '?' }} t/ha</div>
                   <div class="download-sub">{{ a.fecha_muestreo ?? '' }}</div>
-                  <div class="download-status" [class.ready]="a.fertilizer_plan?.pdf_download" [class.pending]="!a.fertilizer_plan?.pdf_download">{{ a.fertilizer_plan?.pdf_download ? 'PDF listo' : 'Pendiente' }}</div>
+                  <div class="download-status" [class.ready]="hasPlan(a)" [class.pending]="!hasPlan(a)">
+                    {{ hasPlan(a) ? sentLabel(a) : 'Pendiente' }}
+                  </div>
                 </div>
                 <div class="download-actions">
-                  <a class="btn btn-icon" [routerLink]="['/analyses', a.id]"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7Zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Z" fill="currentColor"/></svg><span>Ver detalles</span></a>
-                  <a *ngIf="a.fertilizer_plan?.pdf_download" class="btn btn-secondary btn-icon" [href]="a.fertilizer_plan?.pdf_download" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Descargar PDF</span></a>
-                  <button *ngIf="!a.fertilizer_plan?.pdf_download" class="btn btn-secondary btn-icon" type="button" (click)="onGeneratePlan(a)" [disabled]="planInProgress() === a.id"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><ng-container *ngIf="planInProgress() === a.id; else genLabel">Generando...</ng-container><ng-template #genLabel><span>Generar plan</span></ng-template></button>
+                  <a class="btn btn-icon" [routerLink]="['/analyses', a.id]">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7Zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Z" fill="currentColor"/></svg>
+                    <span>Ver detalles</span>
+                  </a>
+                  <!-- Botón único: "Enviar PDF a correo" la primera vez, "Reenviar" las siguientes -->
+                  <button class="btn btn-secondary btn-icon" type="button" (click)="onGeneratePlan(a)" [disabled]="planInProgress() === a.id">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <ng-container *ngIf="planInProgress() === a.id; else sendLabel">Enviando...</ng-container>
+                    <ng-template #sendLabel>
+                      <span>{{ sendButtonLabel(a) }}</span>
+                    </ng-template>
+                  </button>
                 </div>
               </div>
             </div>
@@ -149,8 +160,8 @@ type Analysis = { id: number; lote_id: number; meta_rendimiento_t_ha: number | n
               (click)="onGeneratePlan(a)"
               [disabled]="planInProgress() === a.id"
             >
-              <ng-container *ngIf="planInProgress() === a.id; else label">Generando...</ng-container>
-              <ng-template #label>Generar plan</ng-template>
+              <ng-container *ngIf="planInProgress() === a.id; else label">Enviando...</ng-container>
+              <ng-template #label>{{ sendButtonLabel(a) }}</ng-template>
             </button>
           </div>
         </div>
@@ -428,7 +439,7 @@ export class AnalysesPageComponent implements OnInit {
     try {
       await this.api.post(`/api/v1/soil-analyses/${a.id}/plan/generate`, {}, true);
       await this.load();
-      this.toast.show('Plan generado. Revisa el detalle para descargar el PDF.', 'success');
+      this.toast.show('Plan generado. El PDF fue enviado a tu correo.', 'success');
     } catch (e: any) {
       const message = e?.message || 'No se pudo generar el plan';
       this.toast.show(message, 'error');
@@ -472,9 +483,22 @@ export class AnalysesPageComponent implements OnInit {
     return this.lots().find(l => l.id === id)?.nombre ?? '';
   }
 
-  // Filtra análisis con plan y enlace disponible
-  readyAnalyses() {
-    return this.analyses().filter(a => !!a.fertilizer_plan?.pdf_download);
+  hasPlan(a: Analysis): boolean {
+    return !!a.fertilizer_plan;
+  }
+
+  sentLabel(a: Analysis): string {
+    const n = a.fertilizer_plan?.email_sent_count ?? 0;
+    if (n === 0) return 'PDF generado';
+    if (n === 1) return 'Enviado 1 vez';
+    return `Enviado ${n} veces`;
+  }
+
+  sendButtonLabel(a: Analysis): string {
+    const n = a.fertilizer_plan?.email_sent_count ?? 0;
+    if (!a.fertilizer_plan || n === 0) return 'Enviar PDF a correo';
+    if (n === 1) return 'Reenviar (1 vez enviado)';
+    return `Reenviar (${n} veces enviado)`;
   }
   scrollTo(id: string) {
     const el = document.getElementById(id);

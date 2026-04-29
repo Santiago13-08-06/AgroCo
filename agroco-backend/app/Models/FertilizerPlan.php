@@ -10,6 +10,7 @@ class FertilizerPlan extends Model
     protected $fillable = [
         'soil_analysis_id',
         'download_token',
+        'email_sent_count',
 
         // Nutrientes objetivo (kg/ha)
         'n', 'p2o5', 'k2o', 's',
@@ -73,8 +74,9 @@ class FertilizerPlan extends Model
         'fe_eddha_6fe' => 'float',
 
         // Flags
-        'use_zn_soil' => 'boolean',
-        'use_mn_foliar' => 'boolean',
+        'use_zn_soil'       => 'boolean',
+        'use_mn_foliar'     => 'boolean',
+        'email_sent_count'  => 'integer',
 
         // JSON
         'split'        => 'array',

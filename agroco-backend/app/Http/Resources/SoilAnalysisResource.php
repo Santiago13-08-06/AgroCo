@@ -3,9 +3,6 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Str;
 
 class SoilAnalysisResource extends JsonResource
 {
@@ -35,36 +32,20 @@ class SoilAnalysisResource extends JsonResource
             'creado_en'              => $this->created_at,
             'actualizado_en'         => $this->updated_at,
 
-            // === Plan de fertilización + link de descarga firmado ===
-            // Requiere que la relación SE HAYA CARGADO: with('soilAnalyses.fertilizerPlan')
-            // y la ruta firmada: name('fert-plans.download.signed')
+            // === Plan de fertilización ===
+            // Requiere que la relación SE HAYA CARGADO: with('plan')
             'fertilizer_plan' => $this->when(
                 $this->relationLoaded('plan') || $this->relationLoaded('fertilizerPlan'),
                 function () {
                     $plan = $this->relationLoaded('plan') ? $this->plan : $this->fertilizerPlan;
 
-                    if (!$plan) {
+                    if (! $plan) {
                         return null;
                     }
 
-                    $token = $plan->download_token;
-                    if (!$token) {
-                        $token = Str::random(40);
-                        $plan->forceFill(['download_token' => $token])->save();
-                    }
-
-                    $downloadUrl = URL::temporarySignedRoute(
-                        'fert-plans.download',
-                        now()->addMinutes(60),
-                        ['plan' => $plan->id, 'token' => $token]
-                    );
-
                     return [
-                        'id'           => $plan->id,
-                        'pdf_file'     => null,
-                        'pdf_exists'   => true,
-                        'pdf_download' => $downloadUrl,
-                        'data'         => new \App\Http\Resources\FertilizerPlanResource($plan),
+                        'id'               => $plan->id,
+                        'email_sent_count' => (int) ($plan->email_sent_count ?? 0),
                     ];
                 }
             ),
