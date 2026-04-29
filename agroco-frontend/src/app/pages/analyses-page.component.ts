@@ -437,12 +437,13 @@ export class AnalysesPageComponent implements OnInit {
     if (!this.auth.token()) return;
     this.planInProgress.set(a.id);
     try {
-      const res = await this.api.post<{ mail_sent: boolean }>(`/api/v1/soil-analyses/${a.id}/plan/generate`, {}, true);
+      const res = await this.api.post<{ mail_sent: boolean; mail_error?: string }>(`/api/v1/soil-analyses/${a.id}/plan/generate`, {}, true);
       await this.load();
       if (res?.mail_sent) {
         this.toast.show('Plan generado. El PDF fue enviado a tu correo.', 'success');
       } else {
-        this.toast.show('Plan guardado, pero el correo no pudo enviarse. Verifica la configuración de correo.', 'error');
+        const detail = res?.mail_error ? ` (${res.mail_error})` : '';
+        this.toast.show(`Correo no enviado${detail}`, 'error');
       }
     } catch (e: any) {
       const message = e?.error?.message || e?.message || 'No se pudo generar el plan';

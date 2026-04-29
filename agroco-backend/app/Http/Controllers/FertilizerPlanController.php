@@ -120,21 +120,12 @@ class FertilizerPlanController extends Controller
                 $mailSent = true;
             } catch (\Throwable $e) {
                 $mailError = $e->getMessage();
-                Log::channel('agroco')->error('Error al enviar correo del plan', [
-                    'plan_id' => $plan->id,
-                    'error'   => $mailError,
-                ]);
+                // Usar error_log para que sea visible en Railway logs (stderr/stdout)
+                error_log('[AgroCo] Error al enviar correo plan_id=' . $plan->id . ' => ' . $mailError);
             }
         }
 
-        Log::channel('agroco')->info('Plan de fertilización generado', [
-            'plan_id'          => $plan->id,
-            'soil_analysis_id' => $soilAnalysis->id,
-            'lot_id'           => $soilAnalysis->lot_id,
-            'mail_sent'        => $mailSent,
-            'mail_error'       => $mailError,
-            'user_id'          => $soilAnalysis->lot->user_id,
-        ]);
+        error_log('[AgroCo] Plan generado plan_id=' . $plan->id . ' mail_sent=' . ($mailSent ? 'true' : 'false'));
 
         return response()->json([
             'message'      => 'Plan de fertilización generado correctamente.',
@@ -143,6 +134,7 @@ class FertilizerPlanController extends Controller
             'area_ha'      => $soilAnalysis->lot->area_ha ?? 1,
             'pdf_download' => $signedUrl,
             'mail_sent'    => $mailSent,
+            'mail_error'   => $mailError, // visible en respuesta para debug
             'plan'         => $resource,
         ]);
     }
