@@ -12,7 +12,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
@@ -23,7 +22,7 @@ class FertilizerPlanController extends Controller
         $soilAnalysis->loadMissing('lot.user');
         $this->authorize('update', $soilAnalysis->lot);
 
-        $result = (array) $calculator->buildPlan($soilAnalysis);
+        $result   = (array) $calculator->buildPlan($soilAnalysis);
         $targets  = $this->normalizeKeys((array) Arr::get($result, 'targets', []));
         $products = $this->normalizeKeys((array) Arr::get($result, 'products', []));
         $split    = Arr::get($result, 'split', []);
@@ -84,41 +83,28 @@ class FertilizerPlanController extends Controller
             ], 422);
         }
 
-        // Generar PDF en memoria
-        $pdfFilename = sprintf('plan_fertilizacion_%d_%s.pdf', $plan->id, $plan->download_token);
+        // Generar URL de descarga firmada (24 horas)
+        $signedUrl = URL::temporarySignedRoute(
+            'fert-plans.download',
+            now()->addHours(24),
+            ['plan' => $plan->id, 'token' => $plan->download_token]
+        );
+
+        // Generar PDF en memoria (sin Storage)
+        $pdfFilename = sprintf('plan_fertilizacion_%d.pdf', $plan->id);
         $pdfContent  = Pdf::loadView('pdf.plan_fertilizacion', [
             'plan' => $resource,
             'lot'  => $soilAnalysis->lot,
             'soil' => $soilAnalysis,
         ])->output();
 
-        // Guardar en Storage para que el endpoint de descarga funcione
-        $storage   = Storage::disk('public');
-        $directory = 'plans';
-        if (! $storage->exists($directory)) {
-            $storage->makeDirectory($directory);
-        }
-        $relativePath = "{$directory}/{$pdfFilename}";
-
-        // Borrar PDFs anteriores del mismo plan
-        foreach ($storage->files($directory) as $path) {
-            if (str_starts_with(basename($path), "plan_fertilizacion_{$plan->id}_") && $path !== $relativePath) {
-                $storage->delete($path);
-            }
-        }
-        $storage->put($relativePath, $pdfContent);
-
-        // URL de descarga firmada (60 min)
-        $signedUrl = URL::temporarySignedRoute(
-            'fert-plans.download',
-            now()->addMinutes(60),
-            ['plan' => $plan->id, 'token' => $plan->download_token]
-        );
-
-        // Enviar correo con el PDF adjunto
+        // Enviar correo con PDF adjunto
+        // Solo se requiere que el usuario tenga email; no exigimos verificación de email
         $mailSent = false;
+        $mailError = null;
         $user = $soilAnalysis->lot->user;
-        if ($user && $user->email && $user->email_verified_at) {
+
+        if ($user && $user->email) {
             try {
                 Mail::to($user->email)->send(
                     new PlanFertilizacionMailable(
@@ -132,9 +118,10 @@ class FertilizerPlanController extends Controller
                 );
                 $mailSent = true;
             } catch (\Throwable $e) {
+                $mailError = $e->getMessage();
                 Log::channel('agroco')->error('Error al enviar correo del plan', [
                     'plan_id' => $plan->id,
-                    'error'   => $e->getMessage(),
+                    'error'   => $mailError,
                 ]);
             }
         }
@@ -144,24 +131,26 @@ class FertilizerPlanController extends Controller
             'soil_analysis_id' => $soilAnalysis->id,
             'lot_id'           => $soilAnalysis->lot_id,
             'mail_sent'        => $mailSent,
+            'mail_error'       => $mailError,
             'user_id'          => $soilAnalysis->lot->user_id,
         ]);
 
         return response()->json([
-            'message'         => 'Plan de fertilización generado correctamente.',
-            'soil_id'         => $soilAnalysis->id,
-            'lot_id'          => $soilAnalysis->lot_id,
-            'area_ha'         => $soilAnalysis->lot->area_ha ?? 1,
-            'pdf_file'        => $pdfFilename,
-            'pdf_path'        => $relativePath,
-            'pdf_download'    => $signedUrl,
-            'mail_sent'       => $mailSent,
-            'email_pendiente' => $user && ! $user->email_verified_at,
-            'plan'            => $resource,
+            'message'      => 'Plan de fertilización generado correctamente.',
+            'soil_id'      => $soilAnalysis->id,
+            'lot_id'       => $soilAnalysis->lot_id,
+            'area_ha'      => $soilAnalysis->lot->area_ha ?? 1,
+            'pdf_download' => $signedUrl,
+            'mail_sent'    => $mailSent,
+            'plan'         => $resource,
         ]);
     }
 
-    public function download(FertilizerPlan $plan): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    /**
+     * Descarga el PDF generándolo al vuelo desde los datos guardados en BD.
+     * No depende de Storage (compatible con Railway y otros hostings efímeros).
+     */
+    public function download(FertilizerPlan $plan): \Illuminate\Http\Response
     {
         if (! request()->hasValidSignature()) {
             abort(401, 'Link inválido o expirado.');
@@ -172,20 +161,21 @@ class FertilizerPlanController extends Controller
             abort(401, 'Token de descarga inválido.');
         }
 
-        $storage = Storage::disk('public');
-        $file    = collect($storage->files('plans'))
-            ->first(fn ($path) => str_starts_with(basename($path), "plan_fertilizacion_{$plan->id}_"));
+        $plan->loadMissing('soilAnalysis.lot');
 
-        if (! $file || ! $storage->exists($file)) {
-            abort(404, 'Archivo no encontrado.');
-        }
+        $resource    = (new FertilizerPlanResource($plan))->toArray(request());
+        $pdfContent  = Pdf::loadView('pdf.plan_fertilizacion', [
+            'plan' => $resource,
+            'lot'  => $plan->soilAnalysis->lot,
+            'soil' => $plan->soilAnalysis,
+        ])->output();
 
-        $filename = basename($file);
-        $absolute = storage_path("app/public/{$file}");
+        $filename = sprintf('plan_fertilizacion_%d.pdf', $plan->id);
 
-        return response()->download($absolute, $filename, [
+        return response($pdfContent, 200, [
             'Content-Type'        => 'application/pdf',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Content-Length'      => strlen($pdfContent),
         ]);
     }
 

@@ -16,13 +16,18 @@ class PlanFertilizacionMailable extends Mailable
         public Lot $lot,
         public SoilAnalysis $soil,
         public array $planData,
-        public string $downloadUrl
+        public string $downloadUrl,
+        public string $pdfContent,
+        public string $pdfFilename,
     ) {}
 
     public function build()
     {
         return $this->subject('Plan de fertilización - ' . ($this->lot->name ?? 'Lote #' . $this->lot->id))
             ->view('emails.plan_fertilizacion')
+            ->attachData($this->pdfContent, $this->pdfFilename, [
+                'mime' => 'application/pdf',
+            ])
             ->with([
                 'lot'         => $this->lot,
                 'soil'        => $this->soil,
