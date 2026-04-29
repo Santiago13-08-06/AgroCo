@@ -402,11 +402,20 @@ export class AnalysesPageComponent implements OnInit {
         }
       }
       await this.api.post(`/api/v1/lots/${this.form.lotId}/soil-analyses`, payload, true);
-      this.form = { lotId: '', sampled_at: '', yield_target_t_ha: '7', p_mgkg: '', k_cmol: '', ca_cmol: '', mg_cmol: '', s_mgkg: '', b_mgkg: '', fe_mgkg: '', mn_mgkg: '', zn_mgkg: '', cu_mgkg: '' };
+      this.form = { lotId: '', sampled_at: '', yield_target_t_ha: '7', ph: '', mo_percent: '', cec_cmol: '', p_mgkg: '', k_cmol: '', ca_cmol: '', mg_cmol: '', s_mgkg: '', b_mgkg: '', fe_mgkg: '', mn_mgkg: '', zn_mgkg: '', cu_mgkg: '' };
       await this.load();
       this.toast.show('Análisis creado correctamente', 'success');
     } catch (e: any) {
-      const message = 'Hay errores en los datos del análisis. Revisa que la fecha y los nutrientes estén dentro de los rangos permitidos (por ejemplo, K no debe ser mayor a 5 cmol(+)/kg).';
+      // Extraer mensaje real del backend (422 con errores de campo, 500, etc.)
+      let message = 'No se pudo crear el análisis.';
+      const errBody = (e as any)?.error;
+      if (errBody?.message) {
+        message = errBody.message;
+      }
+      if (errBody?.errors) {
+        const fieldErrors = Object.values(errBody.errors as Record<string, string[]>).flat();
+        if (fieldErrors.length) message = fieldErrors.join(' ');
+      }
       this.error.set(message);
       this.toast.show(message, 'error');
     }

@@ -79,11 +79,11 @@ class StoreSoilAnalysisRequest extends FormRequest
             }
 
             $lot = $this->route('lot');
-            if ($lot && $lot->fecha_siembra) {
+            if ($lot && $lot->sowing_date) {
                 try {
-                    $sowing = $lot->fecha_siembra instanceof \Carbon\Carbon
-                        ? $lot->fecha_siembra->copy()->startOfDay()
-                        : \Carbon\Carbon::parse($lot->fecha_siembra)->startOfDay();
+                    $sowing = $lot->sowing_date instanceof \Carbon\Carbon
+                        ? $lot->sowing_date->copy()->startOfDay()
+                        : \Carbon\Carbon::parse($lot->sowing_date)->startOfDay();
                     if ($sampleDate->lt($sowing)) {
                         $validator->errors()->add(
                             'sampled_at',
