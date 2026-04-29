@@ -14,6 +14,7 @@
         "laravel/tinker": "^2.8",
         "maatwebsite/excel": "^3.1.40",
         "phpoffice/phpspreadsheet": "^1.29",
+        "resend/resend-laravel": "^1.3",
         "smalot/pdfparser": "^2.12",
         "thiagoalessio/tesseract_ocr": "^2.13"
     },
