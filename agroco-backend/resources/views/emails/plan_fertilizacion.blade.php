@@ -24,23 +24,7 @@
     </ul>
     @endif
 
-    <p>
-        Puedes descargar tu plan completo en PDF haciendo clic en el siguiente enlace:<br><br>
-        <a href="{{ $downloadUrl }}" style="background:#2e7d32;color:#fff;padding:10px 20px;text-decoration:none;border-radius:5px;">
-            Descargar Plan de Fertilización (PDF)
-        </a>
-    </p>
-
-    <p style="font-size:12px;color:#666;">
-        Este enlace es válido por 24 horas.
-    </p>
-
-    <p>
-        El plan incluye el detalle de:<br>
-        &bull; Objetivos nutricionales (kg/ha y totales)<br>
-        &bull; Dosis de cada fertilizante por hectárea y por lote<br>
-        &bull; Fraccionamiento por fases (siembra, macollamiento, embuche)
-    </p>
+    <p>Adjunto a este correo encontrarás el PDF con tu plan completo.</p>
 
     <p>Éxitos en tu cultivo de arroz.</p>
 
