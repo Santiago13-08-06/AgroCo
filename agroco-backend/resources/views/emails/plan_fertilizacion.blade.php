@@ -5,13 +5,13 @@
     <p>Hola {{ optional($lot->user)->full_name ?? 'Productor' }},</p>
 
     <p>
-        Tu <strong>Plan de fertilización</strong> para el lote
-        <strong>{{ $lot->name ?? 'Lote #'.$lot->id }}</strong> ha sido generado exitosamente.
+        Adjuntamos el <strong>Plan de fertilizacion</strong> para tu lote
+        <strong>{{ $lot->name ?? 'Lote #'.$lot->id }}</strong>.
     </p>
 
     <p>
         <strong>Resumen:</strong><br>
-        &bull; Área: {{ $lot->area_ha ?? '—' }} ha<br>
+        &bull; Area: {{ $lot->area_ha ?? '—' }} ha<br>
         &bull; Rendimiento objetivo: {{ $soil->yield_target_t_ha ?? '—' }} t/ha
     </p>
 
@@ -24,9 +24,14 @@
     </ul>
     @endif
 
-    <p>Adjunto a este correo encontrarás el PDF con tu plan completo.</p>
+    <p>
+        En el PDF adjunto encontraras el detalle de:<br>
+        &bull; Objetivos nutricionales (kg/ha y totales)<br>
+        &bull; Dosis de cada fertilizante por hectarea y por lote<br>
+        &bull; Fraccionamiento por fases (siembra, macollamiento, embuche)
+    </p>
 
-    <p>Éxitos en tu cultivo de arroz.</p>
+    <p>Exitos en tu cultivo de arroz.</p>
 
     <p style="margin-top:20px;">Equipo AgroCo</p>
 </body>
