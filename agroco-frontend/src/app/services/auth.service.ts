@@ -30,6 +30,9 @@ export class AuthService {
 
   async login(data: { nombre_completo: string; documento_identidad: string }) {
     this.loading.set(true);
+    this._token.set(null);
+    localStorage.removeItem('agroco_token');
+    this._user.set(null);
     try {
       const res = await this.api.post<{ token: string } & any>('/api/v1/login', data, false);
       this._token.set(res!.token);
@@ -47,7 +50,7 @@ export class AuthService {
   }
 
   async logout() {
-    try { if (this._token()) await this.api.post('/api/v1/logout', {}, true); } catch {}
+    try { if (this._token()) await this.api.post('/api/v1/logout', {}, true); } catch { }
     this._token.set(null); this._user.set(null); localStorage.removeItem('agroco_token');
   }
 
