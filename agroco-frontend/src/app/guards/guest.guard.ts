@@ -2,8 +2,9 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 
-export const guestGuard: CanActivateFn = (): boolean | UrlTree => {
+export const guestGuard: CanActivateFn = async (): Promise<boolean | UrlTree> => {
   const auth = inject(AuthService);
   const router = inject(Router);
-  return auth.token() ? router.parseUrl('/') : true;
+  const user = await auth.ensureUser();
+  return user ? router.parseUrl('/') : true;
 };

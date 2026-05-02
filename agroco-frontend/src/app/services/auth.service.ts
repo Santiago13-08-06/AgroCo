@@ -106,6 +106,6 @@ export class AuthService {
   }
 
   async me() {
-    try { const me = await this.api.get<User>('/api/v1/me', true); this._user.set(me!); } catch { this._token.set(null); localStorage.removeItem('agroco_token'); }
+    try { const me = await this.api.get<User>('/api/v1/me', true); this._user.set(me!); } catch { this._token.set(null); localStorage.removeItem('agroco_token'); this._user.set(null); }
   }
 }
