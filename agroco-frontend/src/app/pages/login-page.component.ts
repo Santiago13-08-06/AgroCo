@@ -45,7 +45,7 @@ import { AuthService } from '../services/auth.service';
           </label>
 
           <div *ngIf="error" class="auth-error" aria-live="polite">{{ error }}</div>
-          <button class="auth-big-cta" type="submit" [disabled]="auth.loading() || nameCtrl.invalid || docCtrl.invalid">Entrar</button>
+          <button class="auth-big-cta" type="submit" [disabled]="auth.loading() || submitting || nameCtrl.invalid || docCtrl.invalid">Entrar</button>
           <div class="auth-footer">
             &iquest;No tienes cuenta?
             <a routerLink="/register">Reg&iacute;strate</a>
@@ -183,15 +183,22 @@ export class LoginPageComponent {
   nombre = '';
   documento = '';
   error: string | null = null;
+  private submitting = false;
 
   constructor(public auth: AuthService, private router: Router) {}
 
   async onSubmit() {
+    if (this.submitting) return;
+    this.submitting = true;
     this.error = null;
     try {
       await this.auth.login({ nombre_completo: this.nombre, documento_identidad: this.documento });
       const user = this.auth.user();
-      this.router.navigateByUrl(user?.is_admin ? '/admin' : '/');
+      if (!user) {
+        this.error = 'No se pudo verificar la sesión. Intenta nuevamente.';
+        return;
+      }
+      this.router.navigateByUrl(user.is_admin ? '/admin' : '/');
     } catch (e: any) {
       const apiMsg = e?.error?.message;
       const apiErrors = e?.error?.errors;
@@ -205,6 +212,8 @@ export class LoginPageComponent {
       } else {
         this.error = 'Error al iniciar sesion';
       }
+    } finally {
+      this.submitting = false;
     }
   }
 }
