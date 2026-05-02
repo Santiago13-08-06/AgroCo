@@ -38,7 +38,14 @@ export class AuthService {
       this._token.set(res!.token);
       localStorage.setItem('agroco_token', res!.token);
       await this.me();
-    } finally { this.loading.set(false); }
+    } catch (e) {
+      this._token.set(null);
+      localStorage.removeItem('agroco_token');
+      this._user.set(null);
+      throw e;
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   async register(data: { nombre_completo: string; documento_identidad: string; ocupacion: string; email?: string }) {
