@@ -183,7 +183,7 @@ export class LoginPageComponent {
   nombre = '';
   documento = '';
   error: string | null = null;
-  private submitting = false;
+  submitting = false;
 
   constructor(public auth: AuthService, private router: Router) {}
 
