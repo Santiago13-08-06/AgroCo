@@ -19,6 +19,9 @@ export class AuthService {
   private _token = signal<string | null>(localStorage.getItem('agroco_token'));
   private _user = signal<User | null>(null);
   loading = signal<boolean>(false);
+  // Incrementa cada vez que se limpia intencionalmente la sesión (login/logout).
+  // me() descarta respuestas en vuelo si la generación cambió.
+  private _gen = 0;
 
   constructor(private api: ApiService) {
     if (this._token()) this.me();
@@ -30,6 +33,7 @@ export class AuthService {
 
   async login(data: { nombre_completo: string; documento_identidad: string }) {
     this.loading.set(true);
+    this._gen++;                              // invalida cualquier me() en vuelo
     this._token.set(null);
     localStorage.removeItem('agroco_token');
     this._user.set(null);
@@ -57,6 +61,7 @@ export class AuthService {
   }
 
   async logout() {
+    this._gen++;                              // invalida cualquier me() en vuelo
     try { if (this._token()) await this.api.post('/api/v1/logout', {}, true); } catch { }
     this._token.set(null); this._user.set(null); localStorage.removeItem('agroco_token');
   }
@@ -97,8 +102,11 @@ export class AuthService {
   async ensureUser(): Promise<User | null> {
     if (this._user()) return this._user();
     if (!this._token()) return null;
+    const gen = this._gen;
     try {
       await this.me();
+      // Si la sesión fue reiniciada mientras esperábamos, no confiar en el resultado
+      if (this._gen !== gen || !this._token()) return null;
       return this._user();
     } catch {
       return null;
@@ -106,6 +114,16 @@ export class AuthService {
   }
 
   async me() {
-    try { const me = await this.api.get<User>('/api/v1/me', true); this._user.set(me!); } catch { this._token.set(null); localStorage.removeItem('agroco_token'); this._user.set(null); }
+    const gen = this._gen;
+    try {
+      const me = await this.api.get<User>('/api/v1/me', true);
+      if (this._gen !== gen) return;         // sesión fue reiniciada mientras esperábamos
+      this._user.set(me!);
+    } catch {
+      if (this._gen !== gen) return;         // sesión fue reiniciada mientras esperábamos
+      this._token.set(null);
+      localStorage.removeItem('agroco_token');
+      this._user.set(null);
+    }
   }
 }
