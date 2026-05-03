@@ -8,3 +8,4 @@ export const guestGuard: CanActivateFn = async (): Promise<boolean | UrlTree> =>
   const user = await auth.ensureUser();
   return user ? router.parseUrl('/') : true;
 };
+
