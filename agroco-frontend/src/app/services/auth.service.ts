@@ -39,8 +39,12 @@ export class AuthService {
     this._user.set(null);
     try {
       const res = await this.api.post<{ token: string } & any>('/api/v1/login', data, false);
-      this._token.set(res!.token);
-      localStorage.setItem('agroco_token', res!.token);
+      // El backend puede devolver 200 con un mensaje de error (sin token)
+      if (!res?.token) {
+        throw { error: { message: res?.message || 'Credenciales incorrectas' } };
+      }
+      this._token.set(res.token);
+      localStorage.setItem('agroco_token', res.token);
       await this.me();
     } catch (e) {
       this._token.set(null);
@@ -118,7 +122,14 @@ export class AuthService {
     try {
       const me = await this.api.get<User>('/api/v1/me', true);
       if (this._gen !== gen) return;         // sesión fue reiniciada mientras esperábamos
-      this._user.set(me!);
+      // Validar que la respuesta sea un usuario real (el backend puede devolver 200 con error)
+      if (!me || typeof (me as any).id !== 'number') {
+        this._token.set(null);
+        localStorage.removeItem('agroco_token');
+        this._user.set(null);
+        return;
+      }
+      this._user.set(me);
     } catch {
       if (this._gen !== gen) return;         // sesión fue reiniciada mientras esperábamos
       this._token.set(null);
