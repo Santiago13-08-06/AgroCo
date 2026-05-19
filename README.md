@@ -1,6 +1,6 @@
 # 🌾 AgroCo
 
-> Plataforma web y móvil que convierte análisis de suelo en planes de fertilización personalizados para cultivos de arroz en Colombia.
+> Plataforma web que convierte análisis de suelo en planes de fertilización personalizados para cultivos de arroz en Colombia.
 
 ---
 
