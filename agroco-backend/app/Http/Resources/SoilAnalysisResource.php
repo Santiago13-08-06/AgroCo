@@ -46,6 +46,8 @@ class SoilAnalysisResource extends JsonResource
                     return [
                         'id'               => $plan->id,
                         'email_sent_count' => (int) ($plan->email_sent_count ?? 0),
+                        'pdf_exists'       => true,
+                        'data'             => new FertilizerPlanResource($plan),
                     ];
                 }
             ),
